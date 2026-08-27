@@ -1,0 +1,245 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@theme inline {
+  --font-sans: var(--font-body), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Satoshi', var(--font-body), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-coral-foreground: var(--coral-foreground);
+  --color-coral: var(--coral);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-success-strong: var(--success-strong);
+  --color-success-border: var(--success-border);
+  --color-error-muted: var(--error-muted);
+  --color-error-strong: var(--error-strong);
+  --color-error-border: var(--error-border);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root,
+.light {
+  color-scheme: light;
+  /* UxSculpt design system — orange brand, cool neutral surfaces, green/red intents */
+  --background: #f8fafb;
+  --foreground: #181d27;
+  --card: #ffffff;
+  --card-foreground: #181d27;
+  --popover: #ffffff;
+  --popover-foreground: #181d27;
+  --primary: #ff5e2b;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #1a1a1a;
+  --muted: #f8f8f8;
+  --muted-foreground: #535862;
+  --accent: #fff1ec;
+  --accent-foreground: #ff5e2b;
+  --coral: #ff5e2b;
+  --coral-foreground: #ffffff;
+  --destructive: #991b1b;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #ff5e2b;
+  --chart-1: #ff5e2b;
+  --chart-2: #181d27;
+  --chart-3: #16a34a;
+  --chart-4: #475367;
+  --chart-5: #ffb199;
+  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #181d27;
+  --sidebar-primary: #ff5e2b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff1ec;
+  --sidebar-accent-foreground: #ff5e2b;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #ff5e2b;
+  /* Intent tokens — exact UxSculpt badge values */
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --success-muted: #dcfce7;
+  --success-strong: #166534;
+  --success-border: #86efac;
+  --error-muted: #fee2e2;
+  --error-strong: #991b1b;
+  --error-border: #fca5a5;
+  --warning: #f59e0b;
+  --warning-foreground: #1a1a1a;
+  --info: #475367;
+  --info-foreground: #ffffff;
+  --diff-add: #dcfce7;
+  --diff-add-text: #166534;
+  --diff-remove: #fee2e2;
+  --diff-remove-text: #991b1b;
+  --diff-modify: #fef3c7;
+  --diff-modify-text: #92400e;
+}
+
+.dark {
+  color-scheme: dark;
+  /* UxSculpt dark — neutral charcoal surfaces, same orange brand */
+  --background: #16181c;
+  --foreground: #f4f5f6;
+  --card: #1f2126;
+  --card-foreground: #f4f5f6;
+  --popover: #1f2126;
+  --popover-foreground: #f4f5f6;
+  --primary: #ff5e2b;
+  --primary-foreground: #ffffff;
+  --secondary: #2c2e31;
+  --secondary-foreground: #f4f5f6;
+  --muted: #24262a;
+  --muted-foreground: #a3a8b0;
+  --accent: #3a251d;
+  --accent-foreground: #ff8a63;
+  --coral: #ff5e2b;
+  --coral-foreground: #ffffff;
+  --destructive: #f87171;
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: #ff5e2b;
+  --chart-1: #ff5e2b;
+  --chart-2: #f4f5f6;
+  --chart-3: #4ade80;
+  --chart-4: #a3a8b0;
+  --chart-5: #ffb199;
+  --sidebar: #1b1d21;
+  --sidebar-foreground: #f4f5f6;
+  --sidebar-primary: #ff5e2b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2c2e31;
+  --sidebar-accent-foreground: #f4f5f6;
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: #ff5e2b;
+  /* Intent tokens — dark-surface equivalents */
+  --success: #22c55e;
+  --success-foreground: #0b2417;
+  --success-muted: #14321f;
+  --success-strong: #86efac;
+  --success-border: #216e39;
+  --error-muted: #3a1a1a;
+  --error-strong: #fca5a5;
+  --error-border: #7f2222;
+  --warning: #f59e0b;
+  --warning-foreground: #1a1a1a;
+  --info: #a3a8b0;
+  --info-foreground: #16181c;
+  --diff-add: #14321f;
+  --diff-add-text: #86efac;
+  --diff-remove: #3a1a1a;
+  --diff-remove-text: #fca5a5;
+  --diff-modify: #3a2c12;
+  --diff-modify-text: #fcd34d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    /* Apply UxSculpt dark palette on dark system preference */
+    --background: #16181c;
+    --foreground: #f4f5f6;
+    --card: #1f2126;
+    --card-foreground: #f4f5f6;
+    --popover: #1f2126;
+    --popover-foreground: #f4f5f6;
+    --primary: #ff5e2b;
+    --primary-foreground: #ffffff;
+    --secondary: #2c2e31;
+    --secondary-foreground: #f4f5f6;
+    --muted: #24262a;
+    --muted-foreground: #a3a8b0;
+    --accent: #3a251d;
+    --accent-foreground: #ff8a63;
+    --coral: #ff5e2b;
+    --coral-foreground: #ffffff;
+    --destructive: #f87171;
+    --border: oklch(1 0 0 / 12%);
+    --input: oklch(1 0 0 / 14%);
+    --ring: #ff5e2b;
+    --success-muted: #14321f;
+    --success-strong: #86efac;
+    --success-border: #216e39;
+    --error-muted: #3a1a1a;
+    --error-strong: #fca5a5;
+    --error-border: #7f2222;
+    --sidebar: #1b1d21;
+    --sidebar-foreground: #f4f5f6;
+    --sidebar-primary: #ff5e2b;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #2c2e31;
+    --sidebar-accent-foreground: #f4f5f6;
+    --sidebar-border: oklch(1 0 0 / 12%);
+    --sidebar-ring: #ff5e2b;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading font-bold tracking-tight;
+  }
+  /* UxSculpt display titles use Satoshi Black */
+  h1,
+  h2 {
+    @apply font-black;
+  }
+}
