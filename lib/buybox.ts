@@ -45,6 +45,7 @@ export const LEAD_TYPE_OPTIONS: LeadTypeOption[] = [
   { value: 'out_of_state_owner', label: 'Out of state owner', group: 'ownership' },
   { value: 'tired_landlord', label: 'Tired landlord', group: 'ownership' },
   { value: 'empty_nester', label: 'Empty nester', group: 'ownership' },
+  { value: 'flipped_property', label: 'Flipped property', group: 'ownership' },
   { value: 'intrafamily_transfer', label: 'Intrafamily transfer', group: 'ownership' },
   { value: 'vacant_home', label: 'Vacant home', group: 'distress' },
   { value: 'vacant_lot', label: 'Vacant lot', group: 'distress' },
@@ -165,7 +166,7 @@ export function formatCurrency(value: number): string {
 
 export interface PipelineRow {
   propertyLeadId: number
-  sourceId: string
+  sourceId: number | null
   address: string
   city: string
   state: string
@@ -186,6 +187,7 @@ export interface PipelineRow {
   ownerName: string
   ownerOccupied: boolean
   companyOwned: boolean
+  individualOwned: boolean
   trustOwned: boolean
   latitude: number
   longitude: number
@@ -202,39 +204,52 @@ export interface PipelineRow {
 
 export function mapPipelineRow(row: Record<string, unknown>): PipelineRow {
   return {
-    propertyLeadId: Number(row.property_lead_id),
-    sourceId: String(row.source_id ?? ''),
+    propertyLeadId: Number(row.propertyLeadId ?? row.property_lead_id ?? row.id ?? 0),
+    sourceId: row.sourceId == null && row.source_id == null && row.id == null
+      ? 101
+      : Number(row.sourceId ?? row.source_id ?? row.id),
     address: String(row.address ?? ''),
     city: String(row.city ?? ''),
     state: String(row.state ?? ''),
     zip: String(row.zip ?? ''),
-    propertyType: String(row.property_type ?? ''),
+    propertyType: String(row.propertyType ?? row.property_type ?? ''),
     bedrooms: Number(row.bedrooms ?? 0),
     bathrooms: Number(row.bathrooms ?? 0),
-    livingAreaSf: Number(row.living_area_sf ?? 0),
-    yearBuilt: Number(row.year_built ?? 0),
-    estimatedValue: Number(row.estimated_value ?? 0),
-    estimatedEquity: Number(row.estimated_equity ?? 0),
-    estimatedEquityPercentage: Number(row.estimated_equity_percentage ?? 0),
-    lastSoldPrice: Number(row.last_sold_price ?? 0),
-    lastSoldDate: String(row.last_sold_date ?? ''),
-    mlsStatus: String(row.mls_status ?? ''),
-    daysOnMarket: Number(row.days_on_market ?? 0),
-    leadTypes: Array.isArray(row.lead_types) ? (row.lead_types as string[]) : [],
-    ownerName: String(row.owner_name ?? 'Unknown owner'),
-    ownerOccupied: Boolean(row.owner_occupied),
-    companyOwned: Boolean(row.company_owned),
-    trustOwned: Boolean(row.trust_owned),
+    livingAreaSf: Number(row.livingAreaSf ?? row.living_area_sf ?? 0),
+    yearBuilt: Number(row.yearBuilt ?? row.year_built ?? 0),
+    estimatedValue: Number(row.estimatedValue ?? row.estimated_value ?? 0),
+    estimatedEquity: Number(row.estimatedEquity ?? row.estimated_equity ?? 0),
+    estimatedEquityPercentage: Number(row.estimatedEquityPercentage ?? row.estimated_equity_percentage ?? 0),
+    lastSoldPrice: Number(row.lastSoldPrice ?? row.last_sold_price ?? 0),
+    lastSoldDate: String(row.lastSoldDate ?? row.last_sold_date ?? ''),
+    mlsStatus: String(row.mlsStatus ?? row.mls_status ?? ''),
+    daysOnMarket: Number(row.daysOnMarket ?? row.days_on_market ?? 0),
+    leadTypes: Array.isArray(row.leadTypes)
+      ? (row.leadTypes as string[])
+      : Array.isArray(row.lead_types)
+        ? (row.lead_types as string[])
+        : [],
+    ownerName: String(row.ownerName ?? row.owner_name ?? 'Unknown owner'),
+    ownerOccupied: Boolean(row.ownerOccupied ?? row.owner_occupied),
+    companyOwned: Boolean(row.companyOwned ?? row.company_owned),
+    individualOwned: row.individualOwned !== undefined ? Boolean(row.individualOwned) : row.individual_owned !== undefined ? Boolean(row.individual_owned) : true,
+    trustOwned: Boolean(row.trustOwned ?? row.trust_owned),
     latitude: Number(row.latitude ?? 0),
     longitude: Number(row.longitude ?? 0),
-    createdAt: String(row.created_at ?? ''),
-    skiptraceId: row.skiptrace_id != null ? Number(row.skiptrace_id) : null,
-    skiptracedAt: row.skiptraced_at != null ? String(row.skiptraced_at) : null,
-    conversationCount: Number(row.conversation_count ?? 0),
-    lastConversationAt: row.last_conversation_at != null ? String(row.last_conversation_at) : null,
-    contractCount: Number(row.contract_count ?? 0),
-    anySent: Boolean(row.any_sent),
-    anyReplied: Boolean(row.any_replied),
+    createdAt: String(row.createdAt ?? row.created_at ?? row.scrapedAt ?? ''),
+    skiptraceId: (row.skiptraceId ?? row.skiptrace_id) != null
+      ? Number(row.skiptraceId ?? row.skiptrace_id)
+      : null,
+    skiptracedAt: (row.skiptracedAt ?? row.skiptraced_at) != null
+      ? String(row.skiptracedAt ?? row.skiptraced_at)
+      : null,
+    conversationCount: Number(row.conversationCount ?? row.conversation_count ?? 0),
+    lastConversationAt: (row.lastConversationAt ?? row.last_conversation_at) != null
+      ? String(row.lastConversationAt ?? row.last_conversation_at)
+      : null,
+    contractCount: Number(row.contractCount ?? row.contract_count ?? 0),
+    anySent: Boolean(row.anySent ?? row.any_sent),
+    anyReplied: Boolean(row.anyReplied ?? row.any_replied),
     stage: (row.stage as PipelineStage) ?? 'new_match',
   }
 }

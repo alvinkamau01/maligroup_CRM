@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertCircle, Building2, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { type AuthUser } from '@/lib/data'
 import { createClient } from '@/lib/supabase/client'
@@ -65,10 +66,10 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-background px-4">
+    <main className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary border-2 border-primary"><Building2 className="w-5 h-5 text-accent" aria-hidden="true" /></div>
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary border-2 border-primary"><Image src="/Assets/MG.png" alt="Mali Group" width={24} height={24} className="h-6 w-6 object-contain" aria-hidden="true" /></div>
           <div><h1 className="text-base font-bold text-foreground leading-tight">Mali Group</h1><p className="text-xs uppercase tracking-widest text-muted-foreground">Leads Operations</p></div>
         </div>
         <div className="bg-card border border-border rounded-xl p-6 space-y-5">

@@ -1,6 +1,7 @@
 'use client'
 
-import { Building2, Home, FileText, MessageSquare, LogOut, Bell, Search, Shield, Moon, Sun, UserCog, UserRound, BriefcaseBusiness, Target } from 'lucide-react'
+import { Home, FileText, MessageSquare, LogOut, Bell, Search, Shield, Moon, Sun, UserCog, UserRound, BriefcaseBusiness } from 'lucide-react'
+import Image from 'next/image'
 import { useTheme } from '@/components/theme-provider'
 import { type AuthUser } from '@/lib/data'
 import { cn } from '@/lib/utils'
@@ -19,7 +20,7 @@ const NAV_ITEMS: { id: ActiveView; label: string; icon: React.ElementType; descr
   { id: 'overview', label: 'Overview', icon: Home, description: 'Dashboard summary', roles: ['admin', 'broker', 'viewer'] },
   { id: 'seller-leads', label: 'Seller Leads', icon: UserRound, description: 'Individual ownership records', roles: ['admin', 'broker'] },
   { id: 'buyer-leads', label: 'Buyer Leads', icon: BriefcaseBusiness, description: 'Company & trust portfolios', roles: ['admin', 'broker'] },
-  { id: 'buy-box', label: 'Buy Box', icon: Target, description: 'Sourced matches & deal pipeline', roles: ['admin', 'broker'] },
+  { id: 'buy-box', label: 'Buy Box', icon: Search, description: 'Sourced matches & deal pipeline', roles: ['admin', 'broker'] },
   { id: 'agreements', label: 'PSA Manager', icon: FileText, description: 'Purchase & Sale Agreements', roles: ['admin', 'broker', 'viewer'] },
   { id: 'communications', label: 'Communications', icon: MessageSquare, description: 'Email / SMS outreach', roles: ['admin', 'broker'] },
   { id: 'admin-access', label: 'Role Access', icon: UserCog, description: 'Manage workspace roles', roles: ['admin'] },
@@ -37,13 +38,13 @@ export function DashboardShell({ user, activeView, onViewChange, onLogout, child
   const current = visibleNav.find((n) => n.id === activeView)
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-screen overflow-hidden bg-white">
       {/* Top bar */}
       <header className="flex items-center gap-3 px-5 py-2 bg-card border-b border-border shrink-0">
         {/* Brand */}
         <div className="flex items-center gap-2.5 shrink-0">
           <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary shrink-0">
-            <Building2 className="w-3.5 h-3.5 text-accent" aria-hidden="true" />
+            <Image src="/Assets/MG.png" alt="Mali Group" width={20} height={20} className="h-4 w-4 object-contain" />
           </div>
           <div className="min-w-0">
             <p className="text-xs font-bold text-foreground leading-tight truncate">Mali Group</p>

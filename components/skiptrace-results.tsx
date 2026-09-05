@@ -85,9 +85,9 @@ function Candidate({ record, index, total }: { record: RawRecord; index: number;
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <UserRound className="h-4 w-4" />
           </div>
-          <h3 className="font-semibold">{name || `Possible match ${index + 1}`}</h3>
+          <h3 className="font-semibold">{name || 'Match'}</h3>
         </div>
-        {total > 1 && <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{index + 1} of {total}</span>}
+
       </header>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {details.map((detail) => <Row key={detail.label} icon={detail.icon} label={detail.label} value={detail.value} />)}
@@ -148,7 +148,7 @@ export function SkipTraceResults({ result }: { result: unknown }) {
         </div>
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Skip-trace results</p>
-          <h2 className="mt-1 text-lg font-semibold">{cards.length > 1 ? `${cards.length} possible matches` : 'Contact details'}</h2>
+          <h2 className="mt-1 text-lg font-semibold">{cards.length > 1 ? 'possible matches' : 'Contact details'}</h2>
         </div>
       </div>
       <div className="mt-5 grid gap-4">

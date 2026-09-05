@@ -1,8 +1,38 @@
 import { createClient } from '@/lib/supabase/client'
+import { type PipelineRow } from '@/lib/buybox'
 
 export type LeadKind = 'seller' | 'buyer'
 
-export function mapLead(kind: LeadKind, row: Record<string, unknown>) {
+export interface Lead {
+  id: string
+  sourceId: string
+  kind: LeadKind
+  ownerName: string
+  ownershipType: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  units: number
+  estimatedValue: number
+  equity: number
+  lastSoldPrice: number
+  yearsOfOwnership: number
+  ownerOccupied: boolean
+  mailingAddress: string
+  latitude: number
+  longitude: number
+  bedrooms: number
+  bathrooms: number
+  livingAreaSf: number
+  lotSizeAcres: number
+  yearBuilt: number
+  propertyType: string
+  leadTypes: string[]
+  raw: Record<string, unknown>
+}
+
+export function mapLead(kind: LeadKind, row: Record<string, unknown>): Lead {
   const units = Number(row.units ?? 0)
   const ownershipType = row.company_owned ? 'company' : row.trust_owned ? 'trust' : 'individual'
   return {
@@ -44,4 +74,49 @@ export async function fetchLeads(kind: LeadKind, id?: string) {
     : await query.order('id', { ascending: false }).limit(100)
   if (result.error) throw result.error
   return id ? (result.data ? mapLead(kind, result.data as Record<string, unknown>) : null) : (result.data ?? []).map((row: Record<string, unknown>) => mapLead(kind, row))
+}
+
+export async function fetchAllLeads() {
+  const supabase = createClient()
+  const result = await supabase.from('property_leads').select('*').order('id', { ascending: false }).limit(100)
+  if (result.error) throw result.error
+  return (result.data ?? []).map((row: Record<string, unknown>) => mapLead(row.company_owned ? 'buyer' : 'seller', row))
+}
+
+
+export async function submitLead(row: PipelineRow) {
+  const supabase = createClient()
+  const leadKind: LeadKind = row.companyOwned ? 'buyer' : 'seller'
+  const { data, error } = await supabase
+    .from('property_leads')
+    .insert({
+      source_id: row.sourceId,
+      address: row.address,
+      city: row.city,
+      state: row.state,
+      zip: row.zip,
+      property_type: row.propertyType,
+      bedrooms: row.bedrooms,
+      bathrooms: row.bathrooms,
+      estimated_value: row.estimatedValue,
+      estimated_equity: row.estimatedEquity,
+      estimated_equity_percentage: row.estimatedEquityPercentage,
+      owner_name: row.ownerName,
+      owner_occupied: row.ownerOccupied,
+      company_owned: row.companyOwned,
+      individual_owned: row.individualOwned,
+      trust_owned: row.trustOwned,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      living_area_sf: row.livingAreaSf,
+      year_built: row.yearBuilt,
+      mls_status: row.mlsStatus,
+      lead_types: row.leadTypes,
+      last_sold_price: row.lastSoldPrice,
+      last_sold_date: row.lastSoldDate,
+    })
+    .select()
+    .maybeSingle()
+  if (error) throw error
+  return data ? mapLead(leadKind, data as Record<string, unknown>) : null
 }

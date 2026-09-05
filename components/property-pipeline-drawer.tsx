@@ -29,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { SkipTraceResults } from '@/components/skiptrace-results'
 import { cn } from '@/lib/utils'
+import { submitLead, type LeadKind } from '@/lib/leads'
 import {
   computeFinancials,
   formatCurrency,
@@ -139,10 +140,13 @@ function SkipTraceTab({ row }: { row: PipelineRow }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>(row.skiptraceId ? 'done' : 'idle')
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [showContacts, setShowContacts] = useState(false)
+
+  console.log("row:",row)
 
   useEffect(() => {
     if (!row.skiptraceId) return
-    void fetch(`/api/leads/trigger?property_lead_id=${row.propertyLeadId}&source_id=${encodeURIComponent(row.sourceId)}`, { cache: 'no-store' })
+    void fetch(`/api/leads/trigger?property_lead_id=${row.propertyLeadId}&source_id=${encodeURIComponent(String(row.sourceId ?? ''))}`, { cache: 'no-store' })
       .then((response) => response.json())
       .then((payload) => { if (payload?.result) setResult(payload.result) })
       .catch(() => null)
@@ -155,30 +159,68 @@ function SkipTraceTab({ row }: { row: PipelineRow }) {
       const ownerName = row.ownerName.trim().toUpperCase()
       const cityStateZip = [row.city, row.state, row.zip].filter(Boolean).join(', ')
       const ownershipType = row.companyOwned ? 'company' : row.trustOwned ? 'trust' : 'individual'
-      const response = await fetch('/api/leads/trigger', {
+      const response = await fetch('https://maligroup.xyz/webhook/48a1fe91-02f2-42dc-928c-526767e35b00', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ownership_type: ownershipType,
-          workflow: 'skiptrace',
-          property_lead_id: row.propertyLeadId,
-          name_query: `${ownerName};${cityStateZip}`,
-          address_query: [row.address, cityStateZip].filter(Boolean).join(', '),
+          "max_results": 1,
+          "name": [ `${ownerName};${cityStateZip}`],
+          "street_citystatezip": [ row.address,`${cityStateZip}`]
+
         }),
       })
-      const payload = await response.json().catch(() => null)
+      
+      const payload = await response.json()
+      console.log('payload:', payload)
       if (!response.ok) {
-        setErrorMessage(payload?.error ?? 'Skip trace workflow could not be reached.')
+        setErrorMessage('Skip trace workflow could not be reached.')
         setState('error')
         return
       }
-      setResult(payload?.result ?? payload)
+      setResult(payload)
       setState('done')
-    } catch {
+    } catch (error) {
       setErrorMessage('Skip trace workflow could not be reached.')
+      console.log('Error:', error)
       setState('error')
     }
   }
+
+    console.log ("result:",result)
+
+  function extractContacts(result: Record<string, unknown> | null) {
+    if (!result || typeof result !== 'object') return { phones: [], emails: [] }
+    const record = result as Record<string, unknown>
+    const phones: { value: string; type: string; provider: string; lastReported: string }[] = []
+    const emails: string[] = []
+
+    for (let i = 1; i <= 10; i++) {
+      const phoneKey = `Phone-${i}`
+      const emailKey = `Email-${i}`
+      const phoneTypeKey = `Phone-${i}_Type`
+      const phoneProviderKey = `Phone-${i}_Provider`
+      const phoneLastReportedKey = `Phone-${i}_Last_Reported`
+
+      const phoneValue = typeof record[phoneKey] === 'string' ? (record[phoneKey] as string) : ''
+      const emailValue = typeof record[emailKey] === 'string' ? (record[emailKey] as string) : ''
+
+      if (phoneValue) {
+        phones.push({
+          value: phoneValue,
+          type: typeof record[phoneTypeKey] === 'string' ? (record[phoneTypeKey] as string) : '',
+          provider: typeof record[phoneProviderKey] === 'string' ? (record[phoneProviderKey] as string) : '',
+          lastReported: typeof record[phoneLastReportedKey] === 'string' ? (record[phoneLastReportedKey] as string) : '',
+        })
+      }
+      if (emailValue) {
+        emails.push(emailValue)
+      }
+    }
+
+    return { phones, emails }
+  }
+
+  const contacts = result ? extractContacts(result) : { phones: [], emails: [] }
 
   return (
     <div className="space-y-4">
@@ -193,6 +235,81 @@ function SkipTraceTab({ row }: { row: PipelineRow }) {
       </Button>
       {state === 'error' && <p className="text-sm text-destructive">{errorMessage ?? 'Skip trace workflow could not be reached.'}</p>}
       {result && <SkipTraceResults result={result} />}
+
+      {contacts.phones.length > 0 || contacts.emails.length > 0 ? (
+        <Button variant="outline" className="w-full" onClick={() => setShowContacts(true)}>
+          <Phone data-icon="inline-start" />
+          Show Contacts ({contacts.phones.length + contacts.emails.length})
+        </Button>
+      ) : state === 'done' ? (
+        <p className="text-xs text-muted-foreground text-center py-2">No contacts found for this lead.</p>
+      ) : null}
+
+      <Sheet open={showContacts} onOpenChange={setShowContacts}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Contact Information</SheetTitle>
+            <SheetDescription>
+              {row.ownerName} · {row.address}, {row.city}, {row.state} {row.zip}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6 px-4 pb-6">
+            {contacts.phones.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">Phone Numbers</p>
+                <div className="space-y-2">
+                  {contacts.phones.map((phone, index) => (
+                    <a
+                      key={index}
+                      href={`tel:${phone.value.replace(/[^\d+]/g, '')}`}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-sm hover:border-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-4 w-4 text-primary" />
+                        <div>
+                          <p className="font-medium">{phone.value}</p>
+                          {phone.type && <p className="text-xs text-muted-foreground">{phone.type}</p>}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {phone.provider && <p className="text-xs text-muted-foreground">{phone.provider}</p>}
+                        {phone.lastReported && <p className="text-[10px] text-muted-foreground">{phone.lastReported}</p>}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {contacts.emails.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">Email Addresses</p>
+                <div className="space-y-2">
+                  {contacts.emails.map((email, index) => (
+                    <a
+                      key={index}
+                      href={`mailto:${email}`}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-sm hover:border-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-4 w-4 text-primary" />
+                        <span className="break-all">{email}</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {contacts.phones.length === 0 && contacts.emails.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No contact information available.</p>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
@@ -232,10 +349,11 @@ function ConversedTab({ row }: { row: PipelineRow }) {
     void load()
   }
 
-  if (loading) return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading conversations…</div>
-
   return (
     <div className="space-y-4">
+      <div className="rounded-xl border border-dashed border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+        This stage is still under development. Some features may not work as expected.
+      </div>
       {conversations.length === 0 && !showForm && (
         <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
           No conversations have been recorded with this seller yet.
@@ -330,6 +448,9 @@ function ContractsTab({ row }: { row: PipelineRow }) {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-xl border border-dashed border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+        This stage is still under development. Some features may not work as expected.
+      </div>
       <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3">
         <span className={cn(
           'h-2 w-2 rounded-full',
@@ -381,6 +502,8 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
   const [stage, setStage] = useState<PipelineStage>('new_match')
   const [comparablesState, setComparablesState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [comparables, setComparables] = useState<PipelineRow[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
     if (row) {
@@ -418,8 +541,27 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
     setComparablesState('done')
   }
 
+  const leadKind: LeadKind = row.companyOwned ? 'buyer' : 'seller'
+
+  async function handleSubmit() {
+    const currentRow = row
+    if (!currentRow) return
+    setSubmitting(true)
+    try {
+      await submitLead(currentRow)
+      onOpenChange(false)
+      setSuccessMessage('Property successfully added.')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch {
+      // error handling could be added here
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
         <SheetHeader>
           <SheetTitle className="flex items-start gap-2">
@@ -430,6 +572,23 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
             {row.propertyType || 'Property'} · {formatCurrency(row.estimatedValue)}
           </SheetDescription>
         </SheetHeader>
+
+        <div className="px-4 pt-3 pb-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full rounded-lg border-2 border-accent bg-accent text-accent-foreground hover:bg-accent/90"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" />
+            ) : (
+              <Send data-icon="inline-start" />
+            )}
+            {submitting ? 'Submitting…' : `Save as ${leadKind} lead`}
+          </Button>
+        </div>
 
         <div className="mt-4 space-y-5 px-4 pb-6">
           <div className="h-56 overflow-hidden rounded-xl border border-border bg-muted">
@@ -459,17 +618,20 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
               {STAGE_ORDER.map((item) => {
                 const Icon = STAGE_ICONS[item]
                 const active = stage === item
+                const underDevelopment = item === 'conversed' || item === 'under_contract'
                 return (
                   <button
                     key={item}
                     onClick={() => setStage(item)}
                     className={cn(
                       'flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-xs font-semibold transition-colors',
-                      active ? 'border-accent bg-accent text-accent-foreground' : 'border-border text-muted-foreground hover:border-accent/50 hover:text-foreground'
+                      active ? 'border-accent bg-accent text-accent-foreground' : 'border-border text-muted-foreground hover:border-accent/50 hover:text-foreground',
+                      underDevelopment && !active && 'border-dashed'
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {STAGE_LABELS[item]}
+                    {underDevelopment && <span className="text-[9px] uppercase tracking-wider opacity-70">(dev)</span>}
                   </button>
                 )
               })}
@@ -486,6 +648,15 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
           </div>
         </div>
       </SheetContent>
-    </Sheet>
+      </Sheet>
+      {successMessage && (
+        <div
+          role="status"
+          className="fixed right-6 top-6 z-[60] rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-300 shadow-lg"
+        >
+          {successMessage}
+        </div>
+      )}
+    </>
   )
 }

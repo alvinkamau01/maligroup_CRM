@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light dark',
-  themeColor: '#ff5e2b',
+  themeColor: '#0a2540',
 }
 
 export default function RootLayout({
@@ -54,7 +54,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased font-sans bg-background">
+      <body className="antialiased font-sans bg-background" suppressHydrationWarning>
         <ThemeProvider>
           {children}
           {process.env.NODE_ENV === 'production' && <Analytics />}
