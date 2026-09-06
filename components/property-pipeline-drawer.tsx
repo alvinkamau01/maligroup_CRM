@@ -144,6 +144,8 @@ function SkipTraceTab({ row }: { row: PipelineRow }) {
 
   console.log("row:",row)
 
+
+
   useEffect(() => {
     if (!row.skiptraceId) return
     void fetch(`/api/leads/trigger?property_lead_id=${row.propertyLeadId}&source_id=${encodeURIComponent(String(row.sourceId ?? ''))}`, { cache: 'no-store' })
