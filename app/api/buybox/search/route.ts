@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
-const WEBHOOK = process.env.N8N_BUYBOX_WEBHOOK_URL || ''
+const APIFY_TOKEN = process.env.APIFY_TOKEN || ''
+const APIFY_ACTOR_ID = 'crawlerbros~propwire-leads-scraper'
 
 interface SearchBody {
   cities: { city: string; state: string }[]
@@ -55,11 +56,7 @@ function normalizeLead(record: Record<string, unknown>) {
 }
 
 export async function POST(request: Request) {
-  if (!WEBHOOK) return NextResponse.json({ error: 'Buy Box search workflow is not configured. Set N8N_BUYBOX_WEBHOOK_URL.' }, { status: 500 })
-
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY
-  if (!supabaseUrl || !serviceKey) return NextResponse.json({ error: 'Supabase server configuration is missing' }, { status: 500 })
+  if (!APIFY_TOKEN) return NextResponse.json({ error: 'Buy Box search is not configured. Set APIFY_TOKEN.' }, { status: 500 })
 
   let body: SearchBody
   try {
@@ -71,20 +68,33 @@ export async function POST(request: Request) {
   const hasLocation = body.cities?.length || body.states?.length || body.zips?.length
   if (!hasLocation) return NextResponse.json({ error: 'Add at least one city, state, or zip code to search.' }, { status: 400 })
 
+  const locations: string[] = []
+  for (const city of body.cities ?? []) {
+    const loc = city.state ? `${city.city}, ${city.state}` : city.city
+    locations.push(loc)
+  }
+  for (const state of body.states ?? []) locations.push(state)
+  for (const zip of body.zips ?? []) locations.push(zip)
+
+  const params = new URLSearchParams({
+    token: APIFY_TOKEN,
+    limit: '50',
+    format: 'json',
+    clean: 'true',
+  })
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 90000)
   let response: Response
   try {
-    response = await fetch(WEBHOOK, {
+    response = await fetch(`https://api.apify.com/v2/actors/${APIFY_ACTOR_ID}/run-sync-get-dataset-items?${params.toString()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
-        workflow: 'buybox_search',
-        cities: body.cities ?? [],
-        states: body.states ?? [],
-        zips: body.zips ?? [],
+        locations,
         lead_types: body.leadTypes ?? [],
         property_types: body.propertyTypes ?? [],
+        max_items: 50,
       }),
       signal: controller.signal,
     })
@@ -93,7 +103,7 @@ export async function POST(request: Request) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       return NextResponse.json({ error: 'Buy Box search timed out. Try a narrower search.' }, { status: 504 })
     }
-    return NextResponse.json({ error: 'Unable to reach the Buy Box search workflow' }, { status: 502 })
+    return NextResponse.json({ error: 'Unable to reach the Buy Box search service' }, { status: 502 })
   }
   clearTimeout(timeout)
 
@@ -104,35 +114,24 @@ export async function POST(request: Request) {
   } catch {
     payload = responseText ? { raw: responseText } : null
   }
-  if (!response.ok) return NextResponse.json({ error: 'Buy Box search workflow failed', detail: payload }, { status: 502 })
+  if (!response.ok) return NextResponse.json({ error: 'Buy Box search service failed', detail: payload }, { status: 502 })
 
-  const rawRecords: unknown[] = Array.isArray(payload)
-    ? payload
-    : Array.isArray((payload as Record<string, unknown>)?.results)
-      ? ((payload as Record<string, unknown>).results as unknown[])
-      : Array.isArray((payload as Record<string, unknown>)?.data)
-        ? ((payload as Record<string, unknown>).data as unknown[])
+  let rawRecords: unknown[] = []
+  if (Array.isArray(payload)) {
+    rawRecords = payload
+  } else if (typeof payload === 'object' && payload !== null) {
+    const p = payload as Record<string, unknown>
+    rawRecords = Array.isArray(p.results)
+      ? p.results as unknown[]
+      : Array.isArray(p.data)
+        ? p.data as unknown[]
         : []
+  }
 
   const leads = rawRecords
     .filter((record): record is Record<string, unknown> => !!record && typeof record === 'object')
     .map(normalizeLead)
     .filter((lead): lead is NonNullable<typeof lead> => lead !== null)
 
-  if (!leads.length) return NextResponse.json({ ok: true, inserted: 0, results: [] })
-
-  const upsertResponse = await fetch(`${supabaseUrl}/rest/v1/property_leads?on_conflict=source_id`, {
-    method: 'POST',
-    headers: {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates,return=representation',
-    },
-    body: JSON.stringify(leads),
-  })
-  const upsertRows = await upsertResponse.json().catch(() => [])
-  if (!upsertResponse.ok) return NextResponse.json({ error: 'Search succeeded but saving leads failed', detail: upsertRows }, { status: 502 })
-
-  return NextResponse.json({ ok: true, inserted: Array.isArray(upsertRows) ? upsertRows.length : 0, results: upsertRows })
+  return NextResponse.json({ ok: true, count: leads.length, results: leads })
 }

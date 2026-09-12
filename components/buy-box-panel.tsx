@@ -23,6 +23,7 @@ import {
   STAGE_ORDER,
   formatCompactCurrency,
   mapPipelineRow,
+  parseLocationsQuery,
   type PipelineRow,
   type PipelineStage,
 } from '@/lib/buybox'
@@ -458,13 +459,16 @@ export function BuyBoxPanel() {
     setSearchError(null)
     setLoading(true)
     try {
-      const response = await fetch('https://api.apify.com/v2/actors/crawlerbros~propwire-leads-scraper/run-sync-get-dataset-items?token=APIFY_TOKEN_REDACTED', {
+      const { cities, states, zips } = parseLocationsQuery(locationQuery)
+      const response = await fetch('/api/buybox/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          locations: [locationQuery],
-          leadTypes: [ propertyTypes ],
-          maxItems: 50
+          cities,
+          states,
+          zips,
+          leadTypes: dataLeadTypes,
+          propertyTypes,
         }),
       })
       const data = await response.json()
@@ -474,7 +478,8 @@ export function BuyBoxPanel() {
         return
       }
 
-      const mapped = Array.isArray(data) ? data.map(mapPipelineRow) : [mapPipelineRow(data)]
+      const results = data?.results ?? []
+      const mapped = results.map(mapPipelineRow)
       setRows(mapped)
       setLoading(false)
 

@@ -9,13 +9,19 @@ import { UnifiedLeadsPanel } from '@/components/unified-leads-panel'
 import { BuyBoxPanel } from '@/components/buy-box-panel'
 import { PSAManagerPanel } from '@/components/psa-manager-panel'
 import { CommunicationsPanel } from '@/components/communications-panel'
+import LandingPage from '@/components/landing-page'
+import { LeadsCSVPanel } from '@/components/leads-csv-panel'
 import { MOCK_USERS, type AuthUser, type UserRole } from '@/lib/data'
 import { createClient } from '@/lib/supabase/client'
+import { ToastProvider } from '@/hooks/use-toast'
+
+type AppMode = 'wholesale' | 'mortgage-rescue'
 
 export default function Home() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [workspaceUsers, setWorkspaceUsers] = useState<AuthUser[]>(MOCK_USERS)
   const [activeView, setActiveView] = useState<ActiveView>('overview')
+  const [appMode, setAppMode] = useState<AppMode | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -37,7 +43,19 @@ export default function Home() {
   }, [supabase, user])
 
   if (!user) {
-    return <AuthGate onAuthenticated={setUser} />
+    return (
+      <ToastProvider>
+        <AuthGate onAuthenticated={setUser} />
+      </ToastProvider>
+    )
+  }
+
+  if (!appMode) {
+    return (
+      <ToastProvider>
+        <LandingPage onSelect={setAppMode} />
+      </ToastProvider>
+    )
   }
 
   async function handleRoleChange(userId: string, role: UserRole) {
@@ -49,47 +67,52 @@ export default function Home() {
   }
 
   function handleViewChange(view: ActiveView) {
-    // Role-based access control
     const protectedViews: ActiveView[] = ['seller-leads', 'buyer-leads', 'buy-box', 'communications']
     if (user && user.role === 'viewer' && protectedViews.includes(view)) {
-      // Silently block — nav items are already hidden for viewers
       return
     }
     setActiveView(view)
   }
 
   return (
-    <DashboardShell
-      user={user}
-      activeView={activeView}
-      onViewChange={handleViewChange}
-      onLogout={async () => {
-        if (!user.id.startsWith('usr_')) await supabase.auth.signOut()
-        setUser(null)
-        setActiveView('overview')
-      }}
-    >
-      {activeView === 'overview' && (
-        <OverviewPanel user={user} onNavigate={handleViewChange} />
-      )}
-      {activeView === 'admin-access' && user.role === 'admin' && (
-        <AdminAccessPanel users={workspaceUsers} currentUserId={user.id} onRoleChange={handleRoleChange} />
-      )}
-      {activeView === 'seller-leads' && user.role !== 'viewer' && (
-        <UnifiedLeadsPanel kind="seller" user={user} />
-      )}
-      {activeView === 'buyer-leads' && user.role !== 'viewer' && (
-        <UnifiedLeadsPanel kind="buyer" user={user} />
-      )}
-      {activeView === 'buy-box' && user.role !== 'viewer' && (
-        <BuyBoxPanel />
-      )}
-      {activeView === 'agreements' && (
-        <PSAManagerPanel />
-      )}
-      {activeView === 'communications' && user.role !== 'viewer' && (
-        <CommunicationsPanel userRole={user.role} />
-      )}
-    </DashboardShell>
+    <ToastProvider>
+      <DashboardShell
+        user={user}
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        onLogout={async () => {
+          if (!user.id.startsWith('usr_')) await supabase.auth.signOut()
+          setUser(null)
+          setActiveView('overview')
+          setAppMode(null)
+        }}
+        mode={appMode}
+      >
+        {activeView === 'overview' && (
+          <OverviewPanel user={user} onNavigate={handleViewChange} />
+        )}
+        {activeView === 'admin-access' && user.role === 'admin' && (
+          <AdminAccessPanel users={workspaceUsers} currentUserId={user.id} onRoleChange={handleRoleChange} />
+        )}
+        {appMode === 'wholesale' && activeView === 'seller-leads' && user.role !== 'viewer' && (
+          <UnifiedLeadsPanel kind="seller" user={user} />
+        )}
+        {appMode === 'wholesale' && activeView === 'buyer-leads' && user.role !== 'viewer' && (
+          <UnifiedLeadsPanel kind="buyer" user={user} />
+        )}
+        {appMode === 'wholesale' && activeView === 'buy-box' && user.role !== 'viewer' && (
+          <BuyBoxPanel />
+        )}
+        {appMode === 'mortgage-rescue' && activeView === 'leads' && (
+          <LeadsCSVPanel user={user} />
+        )}
+        {activeView === 'agreements' && (
+          <PSAManagerPanel />
+        )}
+        {activeView === 'communications' && user.role !== 'viewer' && (
+          <CommunicationsPanel userRole={user.role} />
+        )}
+      </DashboardShell>
+    </ToastProvider>
   )
 }

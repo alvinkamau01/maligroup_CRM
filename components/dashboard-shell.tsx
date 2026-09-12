@@ -1,26 +1,37 @@
 'use client'
 
-import { Home, FileText, MessageSquare, LogOut, Bell, Search, Shield, Moon, Sun, UserCog, UserRound, BriefcaseBusiness } from 'lucide-react'
+import { Home, FileText, MessageSquare, LogOut, Bell, Search, Shield, Moon, Sun, UserCog, UserRound, BriefcaseBusiness, Upload } from 'lucide-react'
 import Image from 'next/image'
 import { useTheme } from '@/components/theme-provider'
 import { type AuthUser } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
-export type ActiveView = 'overview' | 'seller-leads' | 'buyer-leads' | 'buy-box' | 'agreements' | 'communications' | 'admin-access'
+export type AppMode = 'wholesale' | 'mortgage-rescue'
+
+export type ActiveView = 'overview' | 'seller-leads' | 'buyer-leads' | 'buy-box' | 'agreements' | 'communications' | 'admin-access' | 'leads'
 
 interface DashboardShellProps {
   user: AuthUser
   activeView: ActiveView
   onViewChange: (v: ActiveView) => void
   onLogout: () => void
+  mode: AppMode
   children: React.ReactNode
 }
 
-const NAV_ITEMS: { id: ActiveView; label: string; icon: React.ElementType; description: string; roles: string[] }[] = [
+const WHOLESALE_NAV_ITEMS: { id: ActiveView; label: string; icon: React.ElementType; description: string; roles: string[] }[] = [
   { id: 'overview', label: 'Overview', icon: Home, description: 'Dashboard summary', roles: ['admin', 'broker', 'viewer'] },
   { id: 'seller-leads', label: 'Seller Leads', icon: UserRound, description: 'Individual ownership records', roles: ['admin', 'broker'] },
   { id: 'buyer-leads', label: 'Buyer Leads', icon: BriefcaseBusiness, description: 'Company & trust portfolios', roles: ['admin', 'broker'] },
   { id: 'buy-box', label: 'Buy Box', icon: Search, description: 'Sourced matches & deal pipeline', roles: ['admin', 'broker'] },
+  { id: 'agreements', label: 'PSA Manager', icon: FileText, description: 'Purchase & Sale Agreements', roles: ['admin', 'broker', 'viewer'] },
+  { id: 'communications', label: 'Communications', icon: MessageSquare, description: 'Email / SMS outreach', roles: ['admin', 'broker'] },
+  { id: 'admin-access', label: 'Role Access', icon: UserCog, description: 'Manage workspace roles', roles: ['admin'] },
+]
+
+const MORTGAGE_RESCUE_NAV_ITEMS: { id: ActiveView; label: string; icon: React.ElementType; description: string; roles: string[] }[] = [
+  { id: 'overview', label: 'Overview', icon: Home, description: 'Dashboard summary', roles: ['admin', 'broker', 'viewer'] },
+  { id: 'leads', label: 'Leads', icon: Upload, description: 'Upload & manage lead records', roles: ['admin', 'broker'] },
   { id: 'agreements', label: 'PSA Manager', icon: FileText, description: 'Purchase & Sale Agreements', roles: ['admin', 'broker', 'viewer'] },
   { id: 'communications', label: 'Communications', icon: MessageSquare, description: 'Email / SMS outreach', roles: ['admin', 'broker'] },
   { id: 'admin-access', label: 'Role Access', icon: UserCog, description: 'Manage workspace roles', roles: ['admin'] },
@@ -32,8 +43,9 @@ const ROLE_COLORS: Record<string, string> = {
   viewer: 'bg-muted text-muted-foreground border-border',
 }
 
-export function DashboardShell({ user, activeView, onViewChange, onLogout, children }: DashboardShellProps) {
-  const visibleNav = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
+export function DashboardShell({ user, activeView, onViewChange, onLogout, mode, children }: DashboardShellProps) {
+  const navItems = mode === 'wholesale' ? WHOLESALE_NAV_ITEMS : MORTGAGE_RESCUE_NAV_ITEMS
+  const visibleNav = navItems.filter((item) => item.roles.includes(user.role))
   const { theme, toggleTheme } = useTheme()
   const current = visibleNav.find((n) => n.id === activeView)
 

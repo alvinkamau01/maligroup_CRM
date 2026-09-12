@@ -6,7 +6,6 @@ import {
   Bath,
   BedDouble,
   Building2,
-  DollarSign,
   FileText,
   Loader2,
   Mail,
@@ -30,6 +29,7 @@ import { Button } from '@/components/ui/button'
 import { SkipTraceResults } from '@/components/skiptrace-results'
 import { cn } from '@/lib/utils'
 import { submitLead, type LeadKind } from '@/lib/leads'
+import { useToast } from '@/hooks/use-toast'
 import {
   computeFinancials,
   formatCurrency,
@@ -505,7 +505,8 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
   const [comparablesState, setComparablesState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [comparables, setComparables] = useState<PipelineRow[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const [successMessage, setSuccessMessage] = useState('')
+
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (row) {
@@ -552,10 +553,13 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
     try {
       await submitLead(currentRow)
       onOpenChange(false)
-      setSuccessMessage('Property successfully added.')
-      setTimeout(() => setSuccessMessage(''), 3000)
-    } catch {
-      // error handling could be added here
+      showToast({ type: 'success', title: 'Property successfully added to database.' })
+    } catch (error: any) {
+      if (error?.status === 409 || (error?.message && error.message.includes('409'))) {
+        showToast({ type: 'warning', title: 'Property already in database.' })
+      } else {
+        showToast({ type: 'error', title: 'Failed to add property.', message: error?.message ?? 'Unknown error' })
+      }
     } finally {
       setSubmitting(false)
     }
@@ -651,14 +655,6 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
         </div>
       </SheetContent>
       </Sheet>
-      {successMessage && (
-        <div
-          role="status"
-          className="fixed right-6 top-6 z-[60] rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-300 shadow-lg"
-        >
-          {successMessage}
-        </div>
-      )}
     </>
   )
 }
