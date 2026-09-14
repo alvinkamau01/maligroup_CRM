@@ -553,7 +553,6 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
     try {
       await submitLead(currentRow)
       onOpenChange(false)
-<<<<<<< HEAD
       showToast({ type: 'success', title: 'Property successfully added to database.' })
     } catch (error: any) {
       if (error?.status === 409 || (error?.message && error.message.includes('409'))) {
@@ -656,16 +655,6 @@ export function PropertyPipelineDrawer({ row, open, onOpenChange }: {
         </div>
       </SheetContent>
       </Sheet>
-<<<<<<< HEAD
-=======
-      {successMessage && (
-        <div
-          role="status"
-          className="fixed right-6 top-6 z-[60] rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-300 shadow-lg"
-        >
-          {successMessage}
-        </div>
-      )}
     </>
   )
 }
