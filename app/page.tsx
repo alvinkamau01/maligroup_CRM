@@ -1,118 +1,90 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useClerk, useUser } from '@clerk/nextjs'
 import { AuthGate } from '@/components/auth-gate'
-import { AdminAccessPanel } from '@/components/admin-access-panel'
 import { DashboardShell, type ActiveView } from '@/components/dashboard-shell'
 import { OverviewPanel } from '@/components/overview-panel'
-import { UnifiedLeadsPanel } from '@/components/unified-leads-panel'
-import { BuyBoxPanel } from '@/components/buy-box-panel'
+import { PropertyLeadsPanel } from '@/components/property-leads-panel'
+import { FacebookLeadsPanel } from '@/components/facebook-leads-panel'
 import { PSAManagerPanel } from '@/components/psa-manager-panel'
 import { CommunicationsPanel } from '@/components/communications-panel'
-import LandingPage from '@/components/landing-page'
-import { LeadsCSVPanel } from '@/components/leads-csv-panel'
-import { MOCK_USERS, type AuthUser, type UserRole } from '@/lib/data'
-import { createClient } from '@/lib/supabase/client'
-import { ToastProvider } from '@/hooks/use-toast'
+import { type AuthUser, type UserRole } from '@/lib/data'
 
-type AppMode = 'wholesale' | 'mortgage-rescue'
+const VALID_ROLES: UserRole[] = ['admin', 'broker', 'viewer']
 
 export default function Home() {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [workspaceUsers, setWorkspaceUsers] = useState<AuthUser[]>(MOCK_USERS)
   const [activeView, setActiveView] = useState<ActiveView>('overview')
-  const [appMode, setAppMode] = useState<AppMode | null>(null)
-  const supabase = createClient()
+  const [authSource, setAuthSource] = useState<'clerk' | 'legacy' | null>(null)
+  const { isLoaded, isSignedIn, user: clerkUser } = useUser()
+  const { signOut } = useClerk()
 
   useEffect(() => {
-    if (!user || user.id.startsWith('usr_')) return
-    let active = true
-    supabase.from('profiles').select('id,email,full_name,avatar_url,role').order('created_at').then((result: any) => {
-      const data = result.data as Array<{ id: string; email: string | null; full_name: string | null; avatar_url: string | null; role: UserRole }>
-      if (!active || !data.length) return
-      setWorkspaceUsers(data.map((profile) => ({
-        id: profile.id,
-        name: profile.full_name || profile.email || 'Workspace member',
-        email: profile.email || '',
-        role: profile.role as UserRole,
-        token: profile.id,
-        picture: profile.avatar_url || undefined,
-      })))
+    if (!isLoaded || !isSignedIn || !clerkUser || user) return
+
+    const metadataRole = clerkUser.publicMetadata.role
+    const role = VALID_ROLES.includes(metadataRole as UserRole)
+      ? (metadataRole as UserRole)
+      : 'broker'
+
+    setUser({
+      id: clerkUser.id,
+      name: clerkUser.fullName || clerkUser.primaryEmailAddress?.emailAddress || 'Clerk user',
+      email: clerkUser.primaryEmailAddress?.emailAddress || '',
+      role,
+      token: `clerk:${clerkUser.id}`,
+      picture: clerkUser.imageUrl,
     })
-    return () => { active = false }
-  }, [supabase, user])
+    setAuthSource('clerk')
+  }, [clerkUser, isLoaded, isSignedIn, user])
 
   if (!user) {
-    return (
-      <ToastProvider>
-        <AuthGate onAuthenticated={setUser} />
-      </ToastProvider>
-    )
-  }
-
-  if (!appMode) {
-    return (
-      <ToastProvider>
-        <LandingPage onSelect={setAppMode} />
-      </ToastProvider>
-    )
-  }
-
-  async function handleRoleChange(userId: string, role: UserRole) {
-    const currentUser = user
-    if (!currentUser || currentUser.id.startsWith('usr_')) return
-    const { data, error } = await supabase.rpc('set_profile_role', { target_user_id: userId, next_role: role })
-    if (error || !data) return
-    setWorkspaceUsers((members) => members.map((member) => member.id === userId ? { ...member, role } : member))
+    return <AuthGate onAuthenticated={(u) => {
+      setAuthSource('legacy')
+      setUser(u)
+    }} />
   }
 
   function handleViewChange(view: ActiveView) {
-    const protectedViews: ActiveView[] = ['seller-leads', 'buyer-leads', 'buy-box', 'communications']
+    // Role-based access control
+    const protectedViews: ActiveView[] = ['property-leads', 'facebook-leads', 'communications']
     if (user && user.role === 'viewer' && protectedViews.includes(view)) {
+      // Silently block — nav items are already hidden for viewers
       return
     }
     setActiveView(view)
   }
 
   return (
-    <ToastProvider>
-      <DashboardShell
-        user={user}
-        activeView={activeView}
-        onViewChange={handleViewChange}
-        onLogout={async () => {
-          if (!user.id.startsWith('usr_')) await supabase.auth.signOut()
-          setUser(null)
-          setActiveView('overview')
-          setAppMode(null)
-        }}
-        mode={appMode}
-      >
-        {activeView === 'overview' && (
-          <OverviewPanel user={user} onNavigate={handleViewChange} />
-        )}
-        {activeView === 'admin-access' && user.role === 'admin' && (
-          <AdminAccessPanel users={workspaceUsers} currentUserId={user.id} onRoleChange={handleRoleChange} />
-        )}
-        {appMode === 'wholesale' && activeView === 'seller-leads' && user.role !== 'viewer' && (
-          <UnifiedLeadsPanel kind="seller" user={user} />
-        )}
-        {appMode === 'wholesale' && activeView === 'buyer-leads' && user.role !== 'viewer' && (
-          <UnifiedLeadsPanel kind="buyer" user={user} />
-        )}
-        {appMode === 'wholesale' && activeView === 'buy-box' && user.role !== 'viewer' && (
-          <BuyBoxPanel />
-        )}
-        {appMode === 'mortgage-rescue' && activeView === 'leads' && (
-          <LeadsCSVPanel user={user} />
-        )}
-        {activeView === 'agreements' && (
-          <PSAManagerPanel />
-        )}
-        {activeView === 'communications' && user.role !== 'viewer' && (
-          <CommunicationsPanel userRole={user.role} />
-        )}
-      </DashboardShell>
-    </ToastProvider>
+    <DashboardShell
+      user={user}
+      activeView={activeView}
+      onViewChange={handleViewChange}
+      onLogout={async () => {
+        if (authSource === 'clerk') {
+          await signOut()
+        }
+        setAuthSource(null)
+        setUser(null)
+        setActiveView('overview')
+      }}
+    >
+      {activeView === 'overview' && (
+        <OverviewPanel user={user} onNavigate={handleViewChange} />
+      )}
+      {activeView === 'property-leads' && user.role !== 'viewer' && (
+        <PropertyLeadsPanel />
+      )}
+      {activeView === 'facebook-leads' && user.role !== 'viewer' && (
+        <FacebookLeadsPanel />
+      )}
+      {activeView === 'agreements' && (
+        <PSAManagerPanel />
+      )}
+      {activeView === 'communications' && user.role !== 'viewer' && (
+        <CommunicationsPanel userRole={user.role} />
+      )}
+    </DashboardShell>
   )
 }

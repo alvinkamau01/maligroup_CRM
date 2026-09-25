@@ -1,22 +1,26 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+import { ClerkProvider } from '@clerk/nextjs'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
-// UxSculpt design system: Inter for UI/body, Satoshi (loaded in globals.css) for display
-const interBody = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-body' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-  title: 'Mali Group — Leads Workflow Dashboard',
-  description: 'Mali Group internal operations dashboard — manage property leads, seller and land contacts, skip tracing, PSA agreements, and multi-channel communications.',
+  title: 'Leads Workflow Dashboard',
+  description: 'Real Estate Operations & Lead Automation Assistant — manage property leads, Facebook leads, PSA agreements, and multi-channel communications.',
   generator: 'v0.app',
 }
 
 export const viewport: Viewport = {
   colorScheme: 'light dark',
-  themeColor: '#0a2540',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f9fafb' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f1117' },
+  ],
 }
 
 export default function RootLayout({
@@ -25,14 +29,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${interBody.variable} ${jetbrainsMono.variable} bg-background`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
-        {/* UxSculpt design system display face */}
-        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://api.fontshare.com/v2/css?f%5B%5D=satoshi@500,700,900&display=swap"
-        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -54,11 +52,15 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased font-sans bg-background" suppressHydrationWarning>
-        <ThemeProvider>
-          {children}
-          {process.env.NODE_ENV === 'production' && <Analytics />}
-        </ThemeProvider>
+      <body className="antialiased font-sans bg-background">
+        <ClerkProvider>
+          <ThemeProvider>
+            <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
+              {children}
+              {process.env.NODE_ENV === 'production' && <Analytics />}
+            </GoogleOAuthProvider>
+          </ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   )
